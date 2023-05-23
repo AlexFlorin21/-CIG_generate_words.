@@ -1,38 +1,55 @@
-def expand_and_filter(grammar, symbol, length, current_word, words):
-    if len(current_word) > length:
-        return
+from typing import Dict, List, Union
 
-    if symbol not in grammar:
-        if len(current_word) == length:
-            words.add(current_word)
-        return
+# Gramatica este reprezentată ca un dicționar unde cheile sunt neterminale și
+# valorile sunt liste de producții pentru acel neterminal.
+# Producțiile sunt reprezentate ca liste de simboluri (terminale și neterminale).
 
-    for production in grammar[symbol]:
-        new_word = current_word
-        for prod_symbol in production:
-            expand_and_filter(grammar, prod_symbol, length, new_word, words)
-            if prod_symbol not in grammar:
-                new_word += prod_symbol
-        # Daca productia contine lambda (ε), reprezentat de un string vid
-        if not production:
-            expand_and_filter(grammar, "", length, new_word, words)
+Gramatica = Dict[str, List[List[Union[str, None]]]]
+Productii = List[Union[str, None]]
 
-def genereaza_cuvinte(grammar, start_symbol, n):
-    words = set()
-    expand_and_filter(grammar, start_symbol, n, "", words)
-    return words
+def genereaza_cuvinte(gramatica: Gramatica, start: str, lungime: int) -> List[str]:
+    # Începe cu simbolul de start
+    in_asteptare = [(list(start), [])]
 
-# Exemplu de gramatica independenta de context cu lambda (ε):
-# S -> aA | bB | ε
-# A -> a | aS | bAA
-# B -> b | bS | aBB
-grammar = {
-    "S": ["aA", "bB", ""],
-    "A": ["a", "aS", "bAA"],
-    "B": ["b", "bS", "aBB"]
+    cuvinte = []
+
+    while in_asteptare:
+        # Scoate o derivare și cuvântul său curent din fața listei
+        derivare, cuvant = in_asteptare.pop(0)
+
+        # Dacă derivarea este goală și cuvântul are lungimea dorită,
+        # atunci am găsit un cuvânt
+        if not derivare and len(cuvant) == lungime:
+            cuvinte.append(''.join(cuvant))
+            continue
+
+        # Dacă derivarea este goală sau cuvântul este prea lung,
+        # atunci această derivare poate fi eliminată
+        if not derivare or len(cuvant) > lungime:
+            continue
+
+        # Ia primul simbol din derivare
+        simbol = derivare[0]
+        rest = derivare[1:]
+
+        # Dacă simbolul este un neterminal, adaugă noi derivate
+        # pentru fiecare producție a acestui neterminal
+        if simbol in gramatica:
+            for productie in gramatica[simbol]:
+                in_asteptare.append((productie + rest, cuvant))
+
+        # Dacă simbolul este un terminal, adaugă-l la cuvânt
+        else:
+            in_asteptare.append((rest, cuvant + [simbol]))
+
+    return cuvinte
+
+
+# Exemplu de utilizare:
+gramatica = {
+    'S': [['A', 'B'], ['B', 'A']],
+    'A': [['a'], ['a', 'A']],
+    'B': [['b'], ['b', 'B']],
 }
 
-n = 4  # Lungimea data
-
-result = genereaza_cuvinte(grammar, "S", n)
-print(result)
+print(genereaza_cuvinte(gramatica, 'S', 4))
